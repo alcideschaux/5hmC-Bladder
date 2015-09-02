@@ -1,0 +1,79 @@
+---
+title: Expression in tumor and nontumor tissues
+subtitle: 5mhC expression in bladder cancer
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+```{r Global, echo = FALSE, warning = FALSE, message = FALSE}
+library(knitr)
+opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(plyr)
+library(dplyr)
+library(tidyr)
+source("gplots.R")
+```
+
+```{r Data}
+# Loading the dataset, libraries and sources for analysis
+data <- read.delim("DatasetBladder.csv")
+```
+
+In this section we will compare 5hmC H-scores as they were estimated in paired (i.e, form the sama surgical specimen) normal (i.e., histologically-normal urothelium) and tumor (both invasive and noninvasive) tissues. For this we will use the full dataset. Comparisons were made using the Wilcoxon signed rank test.
+
+```{r}
+# Dataframe for mean expression
+mean_5hmc <- data %>%
+  select(t.5hmc.m, n.5hmc.m) %>%
+  gather(Tissue, H, t.5hmc.m:n.5hmc.m) %>%
+  mutate(Tissue = ifelse(Tissue == "t.5hmc.m", c("Tumor"), c("Normal")))
+# Mean 5hmC expression in normal and tumor tissues
+var <- mean_5hmc$H
+group <- mean_5hmc$Tissue
+gbox(var, group, mean_5hmc, pair = TRUE) +
+  ggtitle("Mean 5hmC expression in normal and \ntumor tissues") +
+  ylab("Mean 5hmC score")
+# Dataframe for median expression
+median_5hmc <- data %>%
+  select(contains("5hmc.med")) %>%
+  gather(Tissue, H, t.5hmc.med:n.5hmc.med) %>%
+  mutate(Tissue = ifelse(Tissue == "t.5hmc.med", c("Tumor"), c("Normal")))
+# Median 5hmC expression in normal and tumor tissues
+var <- median_5hmc$H
+group <- median_5hmc$Tissue
+gbox(var, group, median_5hmc, pair = TRUE) +
+  ggtitle("Median 5hmC expression in normal and \ntumor tissues") +
+  ylab("Median 5hmC score")
+```
+
+***
+
+## 5hmC expression in invasive and noninvasive tumors
+In addition, we will compare mean and median 5hmC scores between noninvasive and invasive tumors. Mean and median H-scores will be obtained from `t.5hmc.m` and `t.5hmc.med` (respectively), using `spot.dx` to identify which cases corresponded to noninvasive or invasive tumors. Regarding the latter, in some cases there was a discrepancy between the diagnosis given in the pathology report (as specified in `histo.dx`) and what was found at the TMA spot (specified in `spot.dx`). The following plot shows what was found at the TMA spots.
+
+```{r spotDx}
+var <- data$spot.dx
+gbar(var, data)
+```
+
+Thus, for the next comparisons and plots we will use only the `Invasive` and `Noninvasive` cases. Comparisons were made using the Mann-Whitney U test.
+
+```{r}
+# Dataset
+data_tumor <- data %>% filter(spot.dx != "Normal") %>% droplevels()
+# Mean H-scores
+var <- data_tumor$t.5hmc.m
+group <- data_tumor$spot.dx
+gbox(var, group, data_tumor) +
+  ggtitle("Mean 5hmC expression in invasive and \noninvasive tumors") +
+  ylab("Mean 5hmC score")
+# Median H-scores
+var <- data_tumor$t.5hmc.med
+group <- data_tumor$spot.dx
+gbox(var, group, data_tumor) +
+  ggtitle("Median 5hmC expression in invasive and \noninvasive tumors") +
+  ylab("Median 5hmC score")
+```
+
+***

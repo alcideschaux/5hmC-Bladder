@@ -1,0 +1,163 @@
+---
+title: Expression and Survival
+subtitle: 5mhC expression in bladder cancer
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+```{r Global, echo = FALSE, warning = FALSE, message = FALSE}
+library(knitr)
+opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(plyr)
+library(dplyr)
+library(tidyr)
+source("gplots.R")
+```
+
+```{r Data}
+# Loading the dataset, libraries and sources for analysis
+data <- read.delim("DatasetBladder.csv")
+# Lumping pT levels at cystectomy considering muscle invasion
+data <- data %>%
+  mutate(mid = ifelse(pt.cystectomy == "Tis-Ta" | pt.cystectomy == "T1", "No", "Yes"))
+data$mid <- factor(data$mid)
+```
+
+In this section we will plot survival curves for overall mortality and cancer-related mortality according to clinicopathologic features and 5hmC expression, categorizing 5hmC expression in low/high levels using as cutoff points: 1) the median; 2) the upper tertile. Only invasive cases will be consider, as observed at the TMA spot (i.e., `spot.dx == Invasive`). For age (numeric variable) we will use the median to define younger and older age groups.
+
+```{r Invasive}
+data_tumor <- data %>%
+  filter(spot.dx == "Invasive") %>%
+  mutate(age_group = ifelse(age > median(age), "Older", "Younger")) %>%
+  droplevels()
+data_tumor$age_group <- factor(data_tumor$age_group, ordered = TRUE)
+```
+
+We will use `follow-up from cystectomy` for the time-to-event analysis.
+
+```{r FU}
+# Establishing follow-up
+FU <- data_tumor$fu.cystectomy
+```
+
+***
+
+## Clinicopathologic features and survival
+In this section we will plot `Kaplan-Meier curves` for overall mortality and cancer-related mortality considering clinicopathologic features. We will compare survival curves using the `log-rank test`.
+
+### Overall mortality
+```{r Clinicopath_Death}
+# Establishing outcome
+outcome <- data_tumor$death
+# Patient's age
+status <- data_tumor$age_group
+gsurv(FU, outcome, status) + ggtitle("Patient's age and overall mortality")
+# Patient's sex
+status <- data_tumor$sex
+gsurv(FU, outcome, status) + ggtitle("Patient's sex and overall mortality")
+# Patient's race
+status <- data_tumor$race
+gsurv(FU, outcome, status) + ggtitle("Patient's race and overall mortality") + theme(legend.position = c(.85, .9))
+# pT stage at cystectomy
+status <- data_tumor$mid
+gsurv(FU, outcome, status) + ggtitle("Presence of muscle-invasive (>pT1) tumor and \noverall mortality")
+# Lymphovascular invasion
+status <- data_tumor$lvi
+gsurv(FU, outcome, status) + ggtitle("Presence of lymphovascular invasion and \noverall mortality")
+# Lymph nodes metastases
+status <- data_tumor$ln.met
+gsurv(FU, outcome, status) + ggtitle("Presence of lymph node metastases and \noverall mortality")
+# Early complications
+status <- data_tumor$comp.early
+gsurv(FU, outcome, status) + ggtitle("Presence of early complications and \noverall mortality")
+# Late complications
+status <- data_tumor$comp.late
+gsurv(FU, outcome, status) + ggtitle("Presence of late complications and \noverall mortality")
+# Metastatic disease after cystectomy
+status <- data_tumor$metastasis
+gsurv(FU, outcome, status) + ggtitle("Presence of metastatic disease after cystectomy \nand overall mortality")
+# 5hmC and tumor progression
+status <- data_tumor$progression
+gsurv(FU, outcome, status) + ggtitle("Presence of tumor progression and \noverall mortality")
+```
+
+***
+
+### Cancer-related mortality
+```{r Clinicopath_DOD}
+# Establishing outcome
+outcome <- data_tumor$dod
+# Patient's agedata_tumor$age_group
+status <- data_tumor$age_group
+gsurv(FU, outcome, status) + ggtitle("Patient's age and cancer-related mortality")
+# Patient's sex
+status <- data_tumor$sex
+gsurv(FU, outcome, status) + ggtitle("Patient's sex and cancer-related mortality")
+# Patient's race
+status <- data_tumor$race
+gsurv(FU, outcome, status) + ggtitle("Patient's race and cancer-related mortality") + theme(legend.position = c(.85, .9))
+# pT stage at cystectomy
+status <- data_tumor$mid
+gsurv(FU, outcome, status) + ggtitle("Presence of muscle-invasive (>pT1) tumor and \ncancer-related mortality")
+# Lymphovascular invasion
+status <- data_tumor$lvi
+gsurv(FU, outcome, status) + ggtitle("Presence of lymphovascular invasion and \ncancer-related mortality")
+# Lymph nodes metastases
+status <- data_tumor$ln.met
+gsurv(FU, outcome, status) + ggtitle("Presence of lymph node metastases and \ncancer-related mortality")
+# Early complications
+status <- data_tumor$comp.early
+gsurv(FU, outcome, status) + ggtitle("Presence of early complications and \ncancer-related mortality")
+# Late complications
+status <- data_tumor$comp.late
+gsurv(FU, outcome, status) + ggtitle("Presence of late complications and \ncancer-related mortality")
+# Metastatic disease after cystectomy
+status <- data_tumor$metastasis
+gsurv(FU, outcome, status) + ggtitle("Presence of metastatic disease after cystectomy \nand cancer-related mortality")
+# 5hmC and tumor progression
+status <- data_tumor$progression
+gsurv(FU, outcome, status) + ggtitle("Presence of tumor progression and \ncancer-related mortality")
+```
+
+## 5hmC levels and survival: Approach #1
+In this approch we will plot `Kaplan-Meier curves` for overall mortality and cancer-related mortality using the `median` H-score as the cutoff point for defining low/high 5hmC levels. We will compare survival curves using the `log-rank test`.
+
+```{r Approach1}
+# Splitting in 2 levels based on median score
+data_tumor <- data_tumor %>%
+  mutate(p50 = ifelse(t.5hmc.med > median(t.5hmc.med, na.rm = TRUE), "High", "Low")) %>%
+  droplevels()
+data_tumor$p50 <- factor(data_tumor$p50)
+# 5hmC and overall mortality
+outcome <- data_tumor$death
+status <- data_tumor$p50
+gsurv(FU, outcome, status) + ggtitle("5hmC levels and overall mortality")
+# 5hmC and cancer-related mortality
+outcome <- data_tumor$dod
+status <- data_tumor$p50
+gsurv(FU, outcome, status) + ggtitle("5hmC levels and cancer-related mortality")
+```
+
+***
+
+## 5hmC levels and survival: Approach #2
+In this approch we will plot `Kaplan-Meier curves` for overall mortality and cancer-related mortality using the upper tertile `Q3` H-score as the cutoff point for defining low/high 5hmC levels. We will compare survival curves using the `log-rank test`.
+
+```{r Approach2}
+# Splitting in 2 levels based on Q3 score
+data_tumor <- data_tumor %>%
+  mutate(q3 = ifelse(t.5hmc.med > quantile(t.5hmc.med, .66, na.rm = TRUE), "High", "Low")) %>%
+  droplevels()
+data_tumor$q3 <- factor(data_tumor$p50)
+# 5hmC and overall mortality
+outcome <- data_tumor$death
+status <- data_tumor$q3
+gsurv(FU, outcome, status) + ggtitle("5hmC levels and overall mortality")
+# 5hmC and cancer-related mortality
+outcome <- data_tumor$dod
+status <- data_tumor$q3
+gsurv(FU, outcome, status) + ggtitle("5hmC levels and cancer-related mortality")
+```
+
+***

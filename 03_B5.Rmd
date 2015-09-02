@@ -1,0 +1,216 @@
+---
+title: Expression and Outcome
+subtitle: 5mhC expression in bladder cancer
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+```{r Global, echo = FALSE, warning = FALSE, message = FALSE}
+library(knitr)
+opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(plyr)
+library(dplyr)
+library(tidyr)
+source("gplots.R")
+```
+
+```{r Data}
+# Loading the dataset, libraries and sources for analysis
+data <- read.delim("DatasetBladder.csv")
+# Lumping pT levels at cystectomy considering muscle invasion
+data <- data %>%
+  mutate(mid = ifelse(pt.cystectomy == "Tis-Ta" | pt.cystectomy == "T1", "No", "Yes"))
+data$mid <- factor(data$mid)
+```
+
+For this section we will use 3 different approaches for evaluating the association of 5hmC and outcome: 1) using 5hmC H-scores; 2) categorizing 5hmC expression in low/high levels using the median as the cutoff point; 3) categorizing 5hmC expression in low/high levels using the Q3 as the cutoff point.
+
+Only invasive cases will be consider from now on, as observed at the TMA spot (i.e., `spot.dx == Invasive`). For age (numeric variable) we will use the median to define younger and older age groups.
+
+```{r Invasive}
+data_tumor <- data %>%
+  filter(spot.dx == "Invasive") %>%
+  mutate(age_group = ifelse(age > median(age), "Older", "Younger")) %>%
+  droplevels()
+data_tumor$age_group <- factor(data_tumor$age_group, ordered = TRUE)
+```
+
+The number of invasive cases is N = `r nrow(data_tumor)`. Also, only median H-scores will be consider for analysis.
+
+## Approach #1
+In this approach we will compare 5hmC `H-scores` against clinicopathologic features and outcome. Comparisons will be made using the Mann-Whitney U test. 
+
+```{r Approach1}
+# For all plots in this section
+data <- data_tumor
+var <- data$t.5hmc.med
+# 5hmC and patient's age group
+group <- data$age_group
+gbox(var, group) + 
+  ggtitle("5hmC expression by group age") +
+  ylab("Median 5hmC score")
+# 5hmC and patient's sex
+group <- data$sex
+gbox(var, group) + 
+  ggtitle("5hmC expression by patient's sex") +
+  ylab("Median 5hmC score")
+# 5hmC and patient's race
+group <- data$race
+gbox(var, group) + 
+  ggtitle("5hmC expression by patient's race") +
+  ylab("Median 5hmC score")
+# 5hmC and pT stage at cystectomy
+group <- data$mid
+gbox(var, group) +
+  ggtitle("5hmC expression by presence of \nmuscle-invasive (>pT1) tumor") +
+  ylab("Median 5hmC score")
+# 5hmC and lymphovascular invasion
+group <- data$lvi
+gbox(var, group) + 
+  ggtitle("5hmC expression by presence of \nlymphovascular invasion") +
+  ylab("Median 5hmC score")
+# 5hmC and lymph nodes metastases
+group <- data$ln.met
+gbox(var, group) + 
+  ggtitle("5hmC expression by presence of \nlymph node metastases") +
+  ylab("Median 5hmC score")
+# 5hmC and early complications
+group <- data$comp.early
+gbox(var, group) + 
+  ggtitle("5hmC expression by presence of \nearly complications") +
+  ylab("Median 5hmC score")
+# 5hmC and late complications
+group <- data$comp.late
+gbox(var, group) + 
+  ggtitle("5hmC expression by presence of \nlate complications") +
+  ylab("Median 5hmC score")
+# 5hmC and metastatic disease after cystectomy
+d <- data_tumor %>% filter(!is.na(metastasis))
+var <- d$t.5hmc.med
+group <- d$metastasis
+gbox(var, group, d) + 
+  ggtitle("5hmC expression by presence of \nmetastatic disease after cystectomy") +
+  ylab("Median 5hmC score")
+# 5hmC and overall mortality
+var <- data$t.5hmc.med
+group <- data$death
+gbox(var, group) + 
+  ggtitle("5hmC expression by overall mortality") +
+  ylab("Median 5hmC score")
+# 5hmC and cancer-related mortality
+d <- data_tumor %>% filter(!is.na(dod))
+var <- d$t.5hmc.med
+group <- d$dod
+gbox(var, group, d) + 
+  ggtitle("5hmC expression by cancer-related mortality") +
+  ylab("Median 5hmC score")
+# 5hmC and tumor progression
+var <- data$t.5hmc.med
+group <- data$progression
+gbox(var, group) + 
+  ggtitle("5hmC expression by presence of \ntumor progression") +
+  ylab("Median 5hmC score")
+```
+
+***
+
+## Approach # 2
+In this approach we will compare 5hmC levels (categorizing 5hmC expression in low/high levels using the `median` as the cutoff point) against clinicopathologic features and outcome. Comparisons will be made using the Fisher's exact test.
+
+```{r Approach2}
+# Splitting in 2 levels based on median score
+data_tumor <- data_tumor %>%
+  mutate(p50 = ifelse(t.5hmc.med > median(t.5hmc.med, na.rm = TRUE), "High", "Low")) %>%
+  droplevels()
+# For all plots in this section
+var2 <- data_tumor$p50
+# 5hmC levels and patient's age group
+var1 <- data_tumor$age_group
+gbar2(var1, var2) + ggtitle("5hmC levels and patient's age group")
+# 5hmC levels and patient's sex
+var1 <- data_tumor$sex
+gbar2(var1, var2) + ggtitle("5hmC levels and patient's sex")
+# 5hmC levels and patient's race
+var1 <- data_tumor$race
+gbar2(var1, var2) + ggtitle("5hmC levels and patient's race")
+# 5hmC and pT stage at cystectomy
+var1 <- data_tumor$mid
+gbar2(var1, var2) + ggtitle("5hmC levels by presence of \nmuscle-invasive (>pT1) tumor")
+# 5hmC and lymphovascular invasion
+var1 <- data_tumor$lvi
+gbar2(var1, var2) + ggtitle("5hmC levels by presence of \nlymphovascular invasion")
+# 5hmC and lymph nodes metastases
+var1 <- data_tumor$ln.met
+gbar2(var1, var2) + ggtitle("5hmC levels by presence of \nlymph node metastases")
+# 5hmC and early complications
+var1 <- data_tumor$comp.early
+gbar2(var1, var2) + ggtitle("5hmC levels by presence of \nearly complications")
+# 5hmC and late complications
+var1 <- data_tumor$comp.late
+gbar2(var1, var2) + ggtitle("5hmC levels by presence of \nlate complications")
+# 5hmC and metastatic disease after cystectomy
+var1 <- data_tumor$metastasis
+gbar2(var1, var2) + ggtitle("5hmC levels by presence of \nmetastatic disease after cystectomy")
+# 5hmC and overall mortality
+var1 <- data_tumor$death
+gbar2(var1, var2) + ggtitle("5hmC levels by overall mortality")
+# 5hmC and cancer-related mortality
+var1 <- data_tumor$dod
+gbar2(var1, var2) + ggtitle("5hmC levels by cancer-related mortality")
+# 5hmC and tumor progression
+var1 <- data_tumor$progression
+gbar2(var1, var2) + ggtitle("5hmC levels by presence of \ntumor progression")
+```
+
+***
+
+## Approach # 3
+In this approach we will compare 5hmC levels (categorizing 5hmC expression in low/high levels using the `upper tertile` as the cutoff point) against clinicopathologic features and outcome. Comparisons will be made using the Fisher's exact test.
+
+```{r Approach3}
+# Splitting in 2 levels based on median score
+data_tumor <- data_tumor %>%
+  mutate(q3 = ifelse(t.5hmc.med > quantile(t.5hmc.med, .66, na.rm = TRUE), "High", "Low")) %>%
+  droplevels()
+# For all plots in this section
+var2 <- data_tumor$q3
+# 5hmC levels and patient's age group
+var1 <- data_tumor$age_group
+gbar2(var1, var2) + ggtitle("5hmC levels and patient's age group")
+# 5hmC levels and patient's sex
+var1 <- data_tumor$sex
+gbar2(var1, var2) + ggtitle("5hmC levels and patient's sex")
+# 5hmC levels and patient's race
+var1 <- data_tumor$race
+gbar2(var1, var2) + ggtitle("5hmC levels and patient's race")
+# 5hmC and pT stage at cystectomy
+var1 <- data_tumor$mid
+gbar2(var1, var2) + ggtitle("5hmC levels by presence of \nmuscle-invasive (>pT1) tumor")
+# 5hmC and lymphovascular invasion
+var1 <- data_tumor$lvi
+gbar2(var1, var2) + ggtitle("5hmC levels by presence of \nlymphovascular invasion")
+# 5hmC and lymph nodes metastases
+var1 <- data_tumor$ln.met
+gbar2(var1, var2) + ggtitle("5hmC levels by presence of \nlymph node metastases")
+# 5hmC and early complications
+var1 <- data_tumor$comp.early
+gbar2(var1, var2) + ggtitle("5hmC levels by presence of \nearly complications")
+# 5hmC and late complications
+var1 <- data_tumor$comp.late
+gbar2(var1, var2) + ggtitle("5hmC levels by presence of \nlate complications")
+# 5hmC and metastatic disease after cystectomy
+var1 <- data_tumor$metastasis
+gbar2(var1, var2) + ggtitle("5hmC levels by presence of \nmetastatic disease after cystectomy")
+# 5hmC and overall mortality
+var1 <- data_tumor$death
+gbar2(var1, var2) + ggtitle("5hmC levels by overall mortality")
+# 5hmC and cancer-related mortality
+var1 <- data_tumor$dod
+gbar2(var1, var2) + ggtitle("5hmC levels by cancer-related mortality")
+# 5hmC and tumor progression
+var1 <- data_tumor$progression
+gbar2(var1, var2) + ggtitle("5hmC levels by presence of \ntumor progression")
+```
+
+***

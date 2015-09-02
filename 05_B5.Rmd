@@ -1,0 +1,149 @@
+---
+title: Expression and Regression Models
+subtitle: 5mhC expression in bladder cancer
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+```{r Global, echo = FALSE, warning = FALSE, message = FALSE}
+library(knitr)
+opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(plyr)
+library(dplyr)
+library(tidyr)
+source("gplots.R")
+```
+
+```{r Data}
+# Loading the dataset, libraries and sources for analysis
+data <- read.delim("DatasetBladder.csv")
+# Lumping pT levels at cystectomy considering muscle invasion
+data <- data %>%
+  mutate(mid = ifelse(pt.cystectomy == "Tis-Ta" | pt.cystectomy == "T1", "No", "Yes"))
+data$mid <- factor(data$mid)
+```
+
+```{r Regression}
+# Logistic regression tables
+logistic.table <- function(outcome, predictors, varlabels){
+  model <- list()
+  OR.center <- list()
+  OR.low <- list()
+  OR.high <- list()
+  OR.p <- list()
+  for(i in 1:length(predictors)) {
+    model[[i]] <- glm(outcome ~ predictors[[i]], family = binomial)
+    OR.center[[i]] <-format(exp(coef(model[[i]]))[2], digits = 2, nsmall = 2)
+    OR.low[[i]] <- format(exp(confint(model[[i]]))[2, 1], digits = 2, nsmall = 2)
+    OR.high[[i]] <- format(exp(confint(model[[i]]))[2, 2], digits = 2, nsmall = 2)
+    OR.p[[i]] <- format(summary(model[[i]])$coef[2, 4], digits = 2, width  = 6)
+  }
+  OR.center <- unlist(OR.center)
+  OR.low <- unlist(OR.low)
+  OR.high <- unlist(OR.high)
+  OR.p <- unlist(OR.p)
+  OR.table <- cbind("Variables" = varlabels, "OR" = OR.center,
+    "Lower 95% CI" = OR.low, "Upper 95% CI" = OR.high, "P value" = OR.p)
+  knitr::kable(OR.table, row.names = FALSE, align = c("l", "c", "c", "c", "c"))
+}
+# Cox regression tables
+cox.table <- function(outcome, fu, predictors, varlabels){
+  outcome <- as.numeric(outcome)
+  survival.obj <- survival::Surv(fu, outcome)
+  model <- list()
+  HR.center <- list()
+  HR.low <- list()
+  HR.high <- list()
+  HR.p <- list()
+  for(i in 1:length(predictors)) {
+    model[[i]] <- survival::coxph(survival.obj ~ predictors[[i]])
+    HR.center[[i]] <-format(summary(model[[i]])$conf.int[1], digits = 2, nsmall = 2)
+    HR.low[[i]] <- format(summary(model[[i]])$conf.int[3], digits = 2, nsmall = 2)
+    HR.high[[i]] <- format(summary(model[[i]])$conf.int[4], digits = 2, nsmall = 2)
+    HR.p[[i]] <- format(summary(model[[i]])$logtest[3], digits = 2, width  = 6)
+  }
+  HR.center <- unlist(HR.center)
+  HR.low <- unlist(HR.low)
+  HR.high <- unlist(HR.high)
+  HR.p <- unlist(HR.p)
+  HR.table <- cbind("Variables" = varlabels, "HR" = HR.center,
+    "Lower 95% CI" = HR.low, "Upper 95% CI" = HR.high, "P value" = HR.p)
+  knitr::kable(HR.table, row.names = FALSE, align = c("l", "c", "c", "c", "c"))
+}
+```
+
+
+In this section we will build regression models for overall mortality and cancer-related mortality according to clinicopathologic features and 5hmC expression, categorizing 5hmC expression in low/high levels using as cutoff points: 1) the median; 2) the upper tertile. Only invasive cases will be consider, as observed at the TMA spot (i.e., `spot.dx == Invasive`). For age (numeric variable) we will use the median to define younger and older age groups.
+
+```{r Invasive}
+data_tumor <- data %>%
+  filter(spot.dx == "Invasive") %>%
+  mutate(age_group = ifelse(age > median(age), "Older", "Younger")) %>%
+  droplevels()
+data_tumor$age_group <- factor(data_tumor$age_group, ordered = TRUE)
+# Splitting in 2 levels based on median score
+data_tumor <- data_tumor %>%
+  mutate(p50 = factor(ifelse(t.5hmc.med > median(t.5hmc.med, na.rm = TRUE), "High", "Low"))) %>%
+  droplevels()
+# Splitting in 2 levels based on Q3 score
+data_tumor <- data_tumor %>%
+  mutate(q3 = factor(ifelse(t.5hmc.med > quantile(t.5hmc.med, .66, na.rm = TRUE), "High", "Low"))) %>%
+  droplevels()
+```
+
+We will begin building uncondicional binary logistic regression models to estimate the odds ratios. We then will build Cox's proportional hazards regression models to estimate the hazard ratios. We will consider time from cystectomy for the follow-up.
+
+***
+
+## Logistic regression: Overall mortality
+```{r OR_death}
+outcome <- data_tumor$death
+predictors <- with(data_tumor, list(
+  "Age group: Older vs. Younger" = age_group,
+  "Sex" = sex,
+  "Race" = race,
+  "Neoadjuvant radiotherapy" = pre.rt,
+  "Neoadjuvant chemotherapy" = pre.ct,
+  "Intravesical chemotherapy" = intra.ct,
+  "Adjuvant radiotherapy" = pos.rt,
+  "Adjuvant chemotherapy" = pos.ct,
+  "Early complications" = comp.early,
+  "Late complications" = comp.late,
+  "Lymph node metastasis" = ln.met,
+  "Distant metastasis" = metastasis,
+  "Lymphovascular invasion" = lvi,
+  "Muscle-invasive disease" = mid,
+  "High 5hmC expression (upper median)" = p50,
+  "High 5hmC expression (upper tertile)" = q3
+  ))
+varlabels <- names(predictors)
+logistic.table(outcome, predictors, varlabels)
+```
+
+***
+
+## Logistic regression: Cancer-related death
+```{r OR_dod}
+outcome <- data_tumor$dod
+logistic.table(outcome, predictors, varlabels)
+```
+
+***
+
+## Cox regression: Overall mortality
+```{r HR_death}
+# Establishing follow-up
+outcome <- data_tumor$death
+fu <- data_tumor$fu.cystectomy
+cox.table(outcome, fu, predictors, varlabels)
+```
+
+***
+
+## Cox regression: Cancer-related mortality
+```{r HR_dod}
+outcome <- data_tumor$dod
+cox.table(outcome, fu, predictors, varlabels)
+```
+

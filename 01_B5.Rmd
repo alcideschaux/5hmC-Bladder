@@ -1,0 +1,114 @@
+---
+title: "Descriptive statistics"
+subtitle: 5mhC expression in bladder cancer
+output: 
+  html_document: 
+    keep_md: yes
+---
+
+```{r Global, echo = FALSE, warning = FALSE, message = FALSE}
+library(knitr)
+opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(plyr)
+library(dplyr)
+source("gplots.R")
+```
+
+```{r Data}
+# Loading the dataset, libraries and sources for analysis
+data <- read.delim("DatasetBladder.csv")
+```
+
+In this section we will describe the dataset, including patient's clinical features, preoperative and surgical data, pathologic features of the tumor, as well as preoperative and posoperative treatment, and patient's outcome. For this section we will use the full dataset (N = `r nrow(data)`). This dataset include all cases that were used for building the tissue microarrays. Data for this section were obtain from medical charts and pathology reports.
+
+```{r Descriptive}
+# Age
+var <- data$age; ghist(var, y = 12, x = 60) + ggtitle("Distribution of patients by age, in years")
+# Sex
+var <- data$sex; gbar(var) + ggtitle("Distribution of patients by sex")
+# Race
+var <- data$race; gbar(var) + ggtitle("Distribution of patients by race")
+# Concomitant prostate carcinoma
+var <- data$pca; gbar(var) + ggtitle("Distribution by presence of \nconcurrent prostatic carcinoma")
+# Preoperative specimen
+d <- data %>% filter(!is.na(pre.specimen))
+var <- d$pre.specimen; gbar(var, d) + ggtitle("Distribution by type of preoperative specimen")
+# Preoperative pT stage
+d <- data %>% filter(!is.na(pre.pt))
+d$pre.pt <- factor(d$pre.pt,
+  levels = c("Tis-Ta", "T1", "T2", "T2a", "T2b", "T3", "T4a"), ordered = TRUE)
+var <- d$pre.pt; gbar(var, d) + ggtitle("Distribution by preoperative pT stage")
+# Preoperative clinical stage
+d <- data %>% filter(!is.na(pre.stage))
+var <- d$pre.stage; gbar(var, d) + ggtitle("Distribution by preoperative clinical stage")
+# Presence of CIS in preoperative specimen
+d <- data %>% filter(!is.na(pre.cis))
+var <- d$pre.cis; gbar(var, d) + ggtitle("Distribution by presence of \nCIS in preoperative specimen")
+# Surgical specimen
+data$specimen <- revalue(data$specimen, c("Bladder" = "Radical Cystectomy"))
+data$specimen <- factor(data$specimen, levels = c("Radical Cystoprostatectomy", "Radical Cystectomy", "Other"))
+var <- data$specimen; gbar(var) + ggtitle("Distribution by type of surgical specimen")
+# pT stage at cystectomy
+data$pt.cystectomy <- factor(data$pt.cystectomy,
+  levels = c("Tis-Ta", "T1", "T2", "T2a", "T2b", "T3", "T3a", "T3b", "T4a"), ordered = TRUE)
+var <- data$pt.cystectomy; gbar(var) + ggtitle("Distribution by pT stage at cystectomy")
+# Clinical stage at cystectomy
+d <- data %>% filter(!is.na(stage.cystectomy))
+var <- d$stage.cystectomy; gbar(var, d) + ggtitle("Distribution by clinical stage at cystectomy")
+# Diagnosis according to the pathology report
+var <- data$histo.dx; gbar(var) + ggtitle("Distribution by diagnosis \n(according to the pathology report)")
+# Diagnosis at the TMA spot
+var <- data$spot.dx; gbar(var) + ggtitle("Distribution by diagnosis \n(according to the TMA spot)")
+# Histologic type of the tumor
+d <- data %>% filter(!is.na(type))
+d$type <- factor(d$type, levels = c("Usual", "Divergent", "Both"))
+var <- d$type; gbar(var, d) + ggtitle("Distribution by histologic type of tumor")
+# Presence of CIS
+var <- data$cis; gbar(var) + ggtitle("Distribution by presence of carcinoma in situ")
+# Lymphovascular invasion
+var <- data$lvi; gbar(var) + ggtitle("Distribution by presence of \nlymphovascular invasion")
+# Total number of lymph nodes
+var <- data$nodes.total; ghist(var, bin = 3, y = 11, x = 16) + ggtitle("Distribution of total number of lymph nodes")
+# Presence of lymph nodes metastasis
+var <- data$ln.met; gbar(var) + ggtitle("Distribution by presence of \nlymph node metastasis")
+# Total number of metastatic lymph nodes
+var <- data$nodes.positive; ghist(var, bin = 1, x = 2.5, y = 50) + ggtitle("Distribution of total number of \nmetastatic lymph nodes")
+# Preoperative radiotherapy
+d <- data %>% filter(!is.na(pre.rt))
+var <- d$pre.rt; gbar(var, d) + ggtitle("Distribution by neoadjuvant radiotherapy")
+# Preoperative chemotherapy
+d <- data %>% filter(!is.na(pre.ct))
+var <- d$pre.ct; gbar(var, d) + ggtitle("Distribution by neoadjuvant chemotherapy")
+# Intravesical chemotherapy
+d <- data %>% filter(!is.na(intra.ct))
+var <- d$intra.ct; gbar(var, d) + ggtitle("Distribution by intravesical chemotherapy")
+# Intravesical chemotherapy type
+var <- d$intra.ct.type; gbar(var, d) + ggtitle("Distribution by type of \nintravesical chemotherapy")
+# Posoperative radiotherapy
+d <- data %>% filter(!is.na(pos.rt))
+var <- d$pos.rt; gbar(var, d) + ggtitle("Distribution by adjuvant chemotherapy")
+# Posoperative chemotherapy
+d <- data %>% filter(!is.na(pos.ct))
+var <- d$pos.ct; gbar(var, d) + ggtitle("Distribution by adjuvant radiotherapy")
+# Posoperative chemotherapy type
+d <- data %>% filter(!is.na(pos.ct.type))
+var <- d$pos.ct.type; gbar(var, d) + ggtitle("Distribution by type of \nadjuvant chemotherapy")
+# Follow-up from cystectomy, in months
+var <- data$fu.cystectomy; ghist(var, bin = 12, x = 110, y = 16) + ggtitle("Distribution of follow-up length \nfrom cystectomy, in months")
+# Follow-up from diagnosis, in months
+var <- data$fu.diagnosis; ghist(var, bin = 12, x = 125, y = 11) + ggtitle("Distribution of follow-up length \nfrom diagnosis, in months")
+# Early complications
+var <- data$comp.early; gbar(var) + ggtitle("Distribution by presence of early complications")
+# Late complications
+var <- data$comp.late; gbar(var) + ggtitle("Distribution by presence of late complications")
+# Metastatic disease after cystectomy
+d <- data %>% filter(!is.na(metastasis))
+var <- d$metastasis; gbar(var, d) + ggtitle("Distribution by presence of metastasic \ndisease after cystectomy")
+# Tumor progression, i.e., metastatic disease or patient dying of cancer
+var <- data$progression; gbar(var) + ggtitle("Distribution by development of tumor progression")
+# Overall mortality, i.e., patient dying of any cause
+var <- data$death; gbar(var) + ggtitle("Distribution by overall mortality")
+# Cancer mortality, i.e., patient dying of cancer (No/Yes)
+d <- data %>% filter(!is.na(dod))
+var <- d$dod; gbar(var, d) + ggtitle("Distribution cancer-related mortality")
+```
