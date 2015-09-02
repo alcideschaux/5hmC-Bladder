@@ -97,6 +97,7 @@ We will begin building uncondicional binary logistic regression models to estima
 ***
 
 ## Logistic regression: Overall mortality
+
 ```{r OR_death}
 outcome <- data_tumor$death
 predictors <- with(data_tumor, list(
@@ -124,6 +125,7 @@ logistic.table(outcome, predictors, varlabels)
 ***
 
 ## Logistic regression: Cancer-related death
+
 ```{r OR_dod}
 outcome <- data_tumor$dod
 logistic.table(outcome, predictors, varlabels)
@@ -132,6 +134,7 @@ logistic.table(outcome, predictors, varlabels)
 ***
 
 ## Cox regression: Overall mortality
+
 ```{r HR_death}
 # Establishing follow-up
 outcome <- data_tumor$death
@@ -142,6 +145,7 @@ cox.table(outcome, fu, predictors, varlabels)
 ***
 
 ## Cox regression: Cancer-related mortality
+
 ```{r HR_dod}
 outcome <- data_tumor$dod
 cox.table(outcome, fu, predictors, varlabels)
